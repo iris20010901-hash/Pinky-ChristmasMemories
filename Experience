@@ -1,0 +1,86 @@
+import React, { useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Stars, Environment } from '@react-three/drei';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { MagicParticles } from './MagicParticles';
+import { ParticleState } from '../types';
+import * as THREE from 'three';
+
+interface ExperienceProps {
+  state: ParticleState;
+  handRotation: number;
+}
+
+const SceneContent: React.FC<{ state: ParticleState, handRotation: number }> = ({ state, handRotation }) => {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (groupRef.current) {
+      // Smoothly interpolate the group rotation based on hand input
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, handRotation, delta * 2);
+    }
+  });
+
+  return (
+    // Scaled down by 50% and elevated to ensure separation from UI
+    <group ref={groupRef} position={[0, 0.5, 0]} scale={[0.5, 0.5, 0.5]}>
+      <MagicParticles state={state} />
+    </group>
+  );
+};
+
+export const Experience: React.FC<ExperienceProps> = ({ state, handRotation }) => {
+  return (
+    <Canvas
+      camera={{ position: [0, 0, 14], fov: 45 }}
+      dpr={[1, 2]} 
+      gl={{ antialias: false, toneMappingExposure: 1.1 }}
+    >
+      <color attach="background" args={['#1a0509']} />
+
+      {/* Environment Map for Gold Reflections */}
+      <Environment preset="city" />
+
+      {/* Ambient Environment */}
+      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      
+      {/* Lighting */}
+      <ambientLight intensity={0.4} color="#ffc0cb" />
+      <pointLight position={[10, 10, 10]} intensity={1.5} color="#fff0f5" />
+      <pointLight position={[-10, -5, -10]} intensity={0.8} color="#ffb7c5" />
+      
+      <spotLight
+        position={[5, 12, 5]}
+        angle={0.4}
+        penumbra={1}
+        intensity={2.5}
+        castShadow
+        color="#fff8e7" 
+      />
+
+      {/* Main Content */}
+      <SceneContent state={state} handRotation={handRotation} />
+
+      {/* Manual Controls */}
+      <OrbitControls 
+        enablePan={false}
+        enableZoom={true}
+        minDistance={5}
+        maxDistance={25}
+        autoRotate={false} 
+        dampingFactor={0.05}
+      />
+
+      {/* Cinematic Post Processing */}
+      <EffectComposer disableNormalPass>
+        <Bloom 
+          luminanceThreshold={0.45} 
+          mipmapBlur 
+          intensity={1.0} 
+          radius={0.4}
+        />
+        <Vignette eskil={false} offset={0.1} darkness={0.6} />
+      </EffectComposer>
+    </Canvas>
+  );
+};
